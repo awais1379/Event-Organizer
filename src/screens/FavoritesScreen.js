@@ -16,21 +16,20 @@ const FavoritesScreen = () => {
   const [favorites, setFavorites] = useState([]);
   const { user } = useContext(AuthContext);
 
-  // Real-time listener for favorites
   const fetchFavoritesLive = () => {
     const favoritesRef = collection(db, "favorites");
     const q = query(favoritesRef, where("userId", "==", user.uid));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const favoriteEvents = snapshot.docs.map((doc) => ({
-        id: doc.data().id, // Original event ID
-        docId: doc.id, // Firestore document ID for favorites
+        id: doc.data().id,
+        docId: doc.id,
         ...doc.data(),
       }));
       setFavorites(favoriteEvents);
     });
 
-    return unsubscribe; // Clean up the listener
+    return unsubscribe;
   };
 
   const toggleFavorite = async (event) => {
@@ -38,7 +37,6 @@ const FavoritesScreen = () => {
       const favorite = favorites.find((fav) => fav.id === event.id);
 
       if (favorite) {
-        // Remove from favorites using the Firestore document ID
         await deleteDoc(doc(db, "favorites", favorite.docId));
         Alert.alert("Removed from favorites!");
       }
@@ -56,13 +54,13 @@ const FavoritesScreen = () => {
     <View style={styles.container}>
       <FlatList
         data={favorites}
-        keyExtractor={(item) => item.docId} // Use Firestore document ID as the key
+        keyExtractor={(item) => item.docId}
         renderItem={({ item }) => (
           <EventCard
             event={item}
             onToggleFavorite={toggleFavorite}
-            isFavorite={true} // All items in the favorites list are favorites
-            currentUserId={user.uid}
+            isFavorite={true}
+            currentUserId={user?.uid}
           />
         )}
       />

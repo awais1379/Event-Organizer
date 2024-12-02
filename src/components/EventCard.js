@@ -2,12 +2,20 @@ import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-const EventCard = ({ event, onToggleFavorite, isFavorite, currentUserId }) => {
+const EventCard = ({
+  event,
+  onToggleFavorite,
+  isFavorite,
+  onDelete,
+  onEdit,
+  currentUserId,
+}) => {
+  const isCreatedByUser = event.createdBy === currentUserId && !!onDelete;
+
   return (
     <View style={styles.card}>
-      <Text style={styles.title}>{event.title}</Text>
-      <Text>{event.description}</Text>
-      <View style={styles.actions}>
+      <View style={styles.header}>
+        <Text style={styles.title}>{event.title}</Text>
         <TouchableOpacity onPress={() => onToggleFavorite(event)}>
           <Ionicons
             name={isFavorite ? "star" : "star-outline"}
@@ -16,23 +24,60 @@ const EventCard = ({ event, onToggleFavorite, isFavorite, currentUserId }) => {
           />
         </TouchableOpacity>
       </View>
+      <Text style={styles.description}>{event.description}</Text>
+      <View style={styles.actions}>
+        {isCreatedByUser && (
+          <TouchableOpacity
+            onPress={() => onEdit(event)}
+            style={styles.iconButton}
+          >
+            <Ionicons name="create-outline" size={24} color="blue" />
+          </TouchableOpacity>
+        )}
+        {isCreatedByUser && (
+          <TouchableOpacity
+            onPress={() => onDelete(event.id)}
+            style={styles.iconButton}
+          >
+            <Ionicons name="trash-outline" size={24} color="red" />
+          </TouchableOpacity>
+        )}
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   card: {
-    padding: 15,
+    padding: 25,
     marginVertical: 10,
     borderWidth: 1,
-    borderRadius: 5,
-    backgroundColor: "#f9f9f9",
+    borderColor: "#ddd",
+    borderRadius: 10,
+    backgroundColor: "#fff",
   },
-  title: { fontWeight: "bold", fontSize: 18 },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#333",
+  },
+  description: {
+    fontSize: 14,
+    color: "#555",
+    marginBottom: 10,
+  },
   actions: {
     flexDirection: "row",
     justifyContent: "flex-end",
-    marginTop: 10,
+  },
+  iconButton: {
+    marginLeft: 15,
   },
 });
 

@@ -1,5 +1,12 @@
 import React, { useEffect, useState, useContext } from "react";
-import { View, Button, StyleSheet, FlatList, Alert } from "react-native";
+import {
+  View,
+  StyleSheet,
+  FlatList,
+  Alert,
+  TouchableOpacity,
+  ActivityIndicator,
+} from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { db } from "../../firebaseConfig";
 import {
@@ -12,7 +19,9 @@ import {
   getDocs,
   doc,
 } from "firebase/firestore";
+import { Ionicons } from "@expo/vector-icons";
 import { AuthContext } from "../context/AuthProvider";
+import { auth } from "../../firebaseConfig"; // Firebase Auth import
 import EventCard from "../components/EventCard";
 
 const HomeScreen = () => {
@@ -21,7 +30,12 @@ const HomeScreen = () => {
   const navigation = useNavigation();
   const { user } = useContext(AuthContext);
 
-  // Real-time listener for events
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+  }, [user]);
+
   const fetchEventsLive = () => {
     const eventsRef = collection(db, "events");
 
@@ -33,10 +47,9 @@ const HomeScreen = () => {
       setEvents(fetchedEvents);
     });
 
-    return unsubscribe; // Clean up the listener
+    return unsubscribe;
   };
 
-  // Real-time listener for favorites
   const fetchFavoritesLive = () => {
     const favoritesRef = collection(db, "favorites");
     const q = query(favoritesRef, where("userId", "==", user.uid));
@@ -46,7 +59,7 @@ const HomeScreen = () => {
       setFavorites(favoriteIds);
     });
 
-    return unsubscribe; // Clean up the listener
+    return unsubscribe;
   };
 
   const toggleFavorite = async (event) => {
@@ -54,7 +67,6 @@ const HomeScreen = () => {
       const isFavorite = favorites.includes(event.id);
 
       if (isFavorite) {
-        // Find and remove the favorite document
         const favoritesRef = collection(db, "favorites");
         const q = query(
           favoritesRef,
@@ -66,7 +78,6 @@ const HomeScreen = () => {
           await deleteDoc(doc.ref);
         });
       } else {
-        // Add to favorites
         await addDoc(collection(db, "favorites"), {
           ...event,
           userId: user.uid,
@@ -74,6 +85,36 @@ const HomeScreen = () => {
       }
     } catch (error) {
       Alert.alert("Error toggling favorite: " + error.message);
+    }
+  };
+
+  const deleteEvent = async (id) => {
+    try {
+      await deleteDoc(doc(db, "events", id));
+
+      const favoritesRef = collection(db, "favorites");
+      const q = query(favoritesRef, where("id", "==", id));
+      const snapshot = await getDocs(q);
+
+      snapshot.forEach(async (doc) => {
+        await deleteDoc(doc.ref);
+      });
+
+      Alert.alert("Event and its favorites deleted successfully!");
+    } catch (error) {
+      Alert.alert("Error deleting event: " + error.message);
+    }
+  };
+
+  const onEditEvent = (event) => {
+    navigation.navigate("EventForm", { event });
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await auth.signOut();
+    } catch (error) {
+      Alert.alert("Error", "Could not sign out: " + error.message);
     }
   };
 
@@ -88,10 +129,20 @@ const HomeScreen = () => {
 
   return (
     <View style={styles.container}>
-      <Button
-        title="Add Event"
-        onPress={() => navigation.navigate("EventForm")}
-      />
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.navigate("EventForm")}>
+          <Ionicons
+            name="add-circle-outline"
+            size={36}
+            color="blue"
+            style={styles.icon}
+          />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={handleSignOut}>
+          <Ionicons name="log-out-outline" size={28} color="red" />
+        </TouchableOpacity>
+      </View>
+
       <FlatList
         data={events}
         keyExtractor={(item) => item.id}
@@ -100,7 +151,9 @@ const HomeScreen = () => {
             event={item}
             onToggleFavorite={toggleFavorite}
             isFavorite={favorites.includes(item.id)}
-            currentUserId={user.uid}
+            currentUserId={user?.uid}
+            onDelete={deleteEvent}
+            onEdit={onEditEvent}
           />
         )}
       />
@@ -110,6 +163,15 @@ const HomeScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20 },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  icon: {
+    marginRight: 10,
+  },
 });
 
 export default HomeScreen;

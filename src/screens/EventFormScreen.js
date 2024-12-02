@@ -1,50 +1,81 @@
-import React, { useState } from "react";
-import { View, TextInput, Button, StyleSheet } from "react-native";
+import React, { useState, useContext, useEffect } from "react";
+import { View, TextInput, Button, StyleSheet, Alert } from "react-native";
 import { db } from "../../firebaseConfig";
-import { addDoc, collection } from "firebase/firestore";
+import { collection, addDoc, updateDoc, doc } from "firebase/firestore";
+import { AuthContext } from "../context/AuthProvider";
 
-const EventFormScreen = ({ navigation }) => {
+const EventForm = ({ route, navigation }) => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const { user } = useContext(AuthContext);
 
-  const addEvent = async () => {
-    if (!title.trim() || !description.trim()) {
-      alert("Please fill in all fields");
+  const { event } = route.params || {};
+
+  useEffect(() => {
+    if (event) {
+      setTitle(event.title);
+      setDescription(event.description);
+    }
+  }, [event]);
+
+  const handleSubmit = async () => {
+    if (!title || !description) {
+      Alert.alert("Error", "Please fill out all fields.");
       return;
     }
 
     try {
-      await addDoc(collection(db, "events"), { title, description });
-      alert("Event added successfully!");
+      if (event) {
+        const eventRef = doc(db, "events", event.id);
+        await updateDoc(eventRef, { title, description });
+        Alert.alert("Success", "Event updated successfully!");
+      } else {
+        await addDoc(collection(db, "events"), {
+          title,
+          description,
+          createdBy: user.uid,
+          createdAt: new Date(),
+        });
+        Alert.alert("Success", "Event created successfully!");
+      }
       navigation.goBack();
     } catch (error) {
-      alert("Error adding event: " + error.message);
+      Alert.alert("Error", "Could not save event: " + error.message);
     }
   };
 
   return (
     <View style={styles.container}>
       <TextInput
-        placeholder="Title"
+        placeholder="Event Title"
         value={title}
         onChangeText={setTitle}
         style={styles.input}
       />
       <TextInput
-        placeholder="Description"
+        placeholder="Event Description"
         value={description}
         onChangeText={setDescription}
         style={styles.input}
         multiline
       />
-      <Button title="Add Event" onPress={addEvent} />
+      <Button
+        title={event ? "Update Event" : "Create Event"}
+        onPress={handleSubmit}
+      />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20 },
-  input: { borderWidth: 1, marginBottom: 10, padding: 10, borderRadius: 5 },
+  input: {
+    borderWidth: 1,
+    borderColor: "#ccc",
+    padding: 10,
+    marginVertical: 10,
+    borderRadius: 5,
+  },
 });
 
-export default EventFormScreen;
+export default EventForm;
